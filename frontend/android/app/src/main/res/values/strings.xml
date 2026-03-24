@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Fish Diet Recommendation</string>
+    <string name="title_activity_main">Fish Diet Recommendation</string>
+    <string name="package_name">com.fishapp.dietrecommendation</string>
+    <string name="custom_url_scheme">com.fishapp.dietrecommendation</string>
+</resources>
