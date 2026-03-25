@@ -7,16 +7,17 @@
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 python-multipart==0.0.9
-ultralytics==8.2.0
+ultralytics>=8.3.0
 Pillow==10.4.0
-numpy==1.26.4
+numpy>=1.26.4
 asyncpg==0.30.0
 python-dotenv==1.0.1
 
 # Render runs Linux; pin CPU wheels explicitly.
-torch==2.5.1+cpu ; platform_system == "Linux"
-torchvision==0.20.1+cpu ; platform_system == "Linux"
+# These versions are available on the PyTorch CPU index used above.
+torch==2.9.1+cpu ; platform_system == "Linux"
+torchvision==0.24.1+cpu ; platform_system == "Linux"
 
 # Fallback pins for non-Linux installs (if reused outside Render).
-torch==2.5.1 ; platform_system != "Linux"
-torchvision==0.20.1 ; platform_system != "Linux"
+torch==2.9.1 ; platform_system != "Linux"
+torchvision==0.24.1 ; platform_system != "Linux"
