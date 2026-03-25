@@ -129,21 +129,19 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useFishIdentification } from '@/composables/useFishIdentification'
 import { useUploadStore } from '@/stores/upload'
 import { useFishStore } from '@/stores/fish'
 import { useAuthStore } from '@/stores/auth'
 import { useProfilesStore } from '@/stores/profiles'
 import { useNotificationStore } from '@/stores/notifications'
-import type { ImageUpload, FishSpecies } from '@/api/types'
+import type { ImageUpload, FishSpecies, FishPrediction } from '@/api/types'
 import ImageUploader from '@/components/features/ImageUploader.vue'
 import FishSafetyResultCard from '@/components/features/FishSafetyResultCard.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Breadcrumb from '@/components/layout/Breadcrumb.vue'
 
-const router = useRouter()
 const identification = useFishIdentification()
 const uploadStore = useUploadStore()
 const fishStore = useFishStore()
@@ -202,8 +200,30 @@ const safetyResults = ref<SafetyResult[]>([])
 const isLoadingRecommendation = ref(false)
 
 // Generate safety recommendation based on fish and user's health conditions
-async function generateSafetyResult(fishId: string, confidence: number): Promise<SafetyResult | null> {
-  const fish = fishStore.getById(fishId)
+async function resolveFishFromPrediction(prediction: FishPrediction): Promise<FishSpecies | null> {
+  let fish: FishSpecies | null = null
+
+  if (prediction.speciesId) {
+    fish = fishStore.getById(prediction.speciesId) || await fishStore.getByIdAsync(prediction.speciesId)
+  }
+
+  // Fallback if speciesId is missing/unmapped: match by name from fish catalog.
+  if (!fish) {
+    if (fishStore.allFish.length === 0) {
+      await fishStore.fetchAll()
+    }
+    const normalized = (prediction.speciesName || '').trim().toLowerCase()
+    fish =
+      fishStore.allFish.find((f) => f.commonName.trim().toLowerCase() === normalized) ||
+      fishStore.allFish.find((f) => f.scientificName.trim().toLowerCase() === normalized) ||
+      null
+  }
+
+  return fish
+}
+
+async function generateSafetyResult(prediction: FishPrediction): Promise<SafetyResult | null> {
+  const fish = await resolveFishFromPrediction(prediction)
   if (!fish) return null
 
   // Get local image if available
@@ -211,6 +231,7 @@ async function generateSafetyResult(fishId: string, confidence: number): Promise
 
   const profile = profilesStore.activeProfile
   const conditionIds = profile?.conditions || []
+  const fishId = fish.id
 
   // Get suitability data for this fish based on conditions
   let recommendation: 'recommended' | 'caution' | 'avoid' = 'recommended'
@@ -294,7 +315,7 @@ async function generateSafetyResult(fishId: string, confidence: number): Promise
     localImageUrl: localImageUrl || undefined,
     recommendation,
     reasoning: reasoning || generateDefaultReasoning(fish, recommendation === 'recommended'),
-    confidence,
+    confidence: prediction.confidence,
     servingSize,
     frequencyPerWeek,
     frequencyPerMonth,
@@ -399,7 +420,7 @@ async function handleUpload(file: File) {
       'Health profile required',
       'Please select at least one health condition before identifying fish.'
     )
-    await router.push('/health-profile')
+    safetyResults.value = []
     return
   }
 
@@ -419,7 +440,7 @@ async function handleUpload(file: File) {
         return
       }
 
-      const result = await generateSafetyResult(topPrediction.speciesId, topPrediction.confidence)
+      const result = await generateSafetyResult(topPrediction)
       safetyResults.value = result ? [result] : []
     } finally {
       isLoadingRecommendation.value = false
@@ -460,7 +481,7 @@ async function handleReprocessUpload(upload: ImageUpload) {
       return
     }
 
-    const result = await generateSafetyResult(topPrediction.speciesId, topPrediction.confidence)
+    const result = await generateSafetyResult(topPrediction)
     safetyResults.value = result ? [result] : []
   } finally {
     isLoadingRecommendation.value = false
