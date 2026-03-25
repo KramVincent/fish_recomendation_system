@@ -2,10 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { ImageUpload, IdentificationResult, FishPrediction } from '@/api/types'
 import { uploadService } from '@/services/uploadService'
-import axios from 'axios'
-
-// Backend inference API URL (proxied via Vite in dev, or direct in production)
-const INFERENCE_API_URL = '/api/identify'
+import { apiClient } from '@/lib/api'
 
 export const useUploadStore = defineStore('upload', () => {
   const uploadHistory = ref<ImageUpload[]>([])
@@ -67,9 +64,9 @@ export const useUploadStore = defineStore('upload', () => {
     formData.append('file', file)
     formData.append('user_id', userId)
 
-    const response = await axios.post(INFERENCE_API_URL, formData, {
+    const response = await apiClient.post('/api/identify', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 30000, // 30s timeout for model inference
+      timeout: 90000, // model inference may take longer on cold starts
     })
 
     const data = response.data

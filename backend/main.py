@@ -28,6 +28,7 @@ import hashlib
 import secrets
 import json
 from urllib.parse import quote_plus
+from urllib.parse import urlparse
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -83,7 +84,20 @@ def _build_database_url() -> str:
     return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
 
-DATABASE_URL = os.getenv("DATABASE_URL") or _build_database_url()
+def _resolve_database_url() -> str:
+    # Render users often paste env values with quotes/spaces; normalize first.
+    raw = (os.getenv("DATABASE_URL") or "").strip().strip('"').strip("'")
+    candidate = raw or _build_database_url()
+    parsed = urlparse(candidate)
+    if parsed.scheme not in ("postgresql", "postgres"):
+        raise RuntimeError(
+            "Invalid DATABASE_URL. Expected scheme 'postgresql://' or 'postgres://'. "
+            "Example: postgresql://user:password@host:5432/dbname"
+        )
+    return candidate
+
+
+DATABASE_URL = _resolve_database_url()
 database_pool: Optional[asyncpg.Pool] = None
 
 
