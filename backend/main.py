@@ -56,6 +56,16 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
+ENABLE_FALLBACK_MODEL = _env_bool("ENABLE_FALLBACK_MODEL", True)
+
+
 def _resolve_model_path(filename: str) -> Path:
     model_dir_env = os.getenv("MODEL_DIR")
     candidates = [
@@ -265,13 +275,16 @@ def load_models():
     else:
         logger.warning(f"Primary model not found at {PRIMARY_MODEL_PATH}")
 
-    # Load fallback model (last checkpoint)
-    if FALLBACK_MODEL_PATH.exists():
-        logger.info(f"Loading fallback model from {FALLBACK_MODEL_PATH}")
-        fallback_model = YOLO(str(FALLBACK_MODEL_PATH))
-        logger.info(f"Fallback model loaded. Task: {fallback_model.task}, Classes: {fallback_model.names}")
+    # Load fallback model (last checkpoint) only when enabled.
+    if ENABLE_FALLBACK_MODEL:
+        if FALLBACK_MODEL_PATH.exists():
+            logger.info(f"Loading fallback model from {FALLBACK_MODEL_PATH}")
+            fallback_model = YOLO(str(FALLBACK_MODEL_PATH))
+            logger.info(f"Fallback model loaded. Task: {fallback_model.task}, Classes: {fallback_model.names}")
+        else:
+            logger.warning(f"Fallback model not found at {FALLBACK_MODEL_PATH}")
     else:
-        logger.warning(f"Fallback model not found at {FALLBACK_MODEL_PATH}")
+        logger.info("Fallback model loading is disabled via ENABLE_FALLBACK_MODEL.")
 
     if primary_model is None and fallback_model is None:
         raise RuntimeError(
@@ -507,6 +520,7 @@ async def health_check():
         "database": database_pool is not None,
         "primaryModel": primary_model is not None,
         "fallbackModel": fallback_model is not None,
+        "fallbackEnabled": ENABLE_FALLBACK_MODEL,
         "classes": list(primary_model.names.values()) if primary_model else [],
     }
 

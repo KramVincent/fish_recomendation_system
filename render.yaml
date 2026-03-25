@@ -17,5 +17,7 @@ services:
         value: /tmp/uploads
       - key: MODEL_DIR
         value: /opt/render/project/src/backend/models
+      - key: ENABLE_FALLBACK_MODEL
+        value: "false"
       - key: PYTHON_VERSION
         value: 3.11.9
