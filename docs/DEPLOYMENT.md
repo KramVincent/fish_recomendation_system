@@ -42,8 +42,9 @@ Optional later refactor if you want monorepo style naming:
 - `DATABASE_URL=<neon pooled postgres url>`
 - `PUBLIC_BASE_URL=https://<your-service>.onrender.com`
 - `CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://<your-vercel-domain>`
-- `UPLOADS_DIR=/var/data/uploads`
+- `UPLOADS_DIR=/tmp/uploads`
 - `MODEL_DIR=/opt/render/project/src/backend/models`
+- `PYTHON_VERSION=3.11.9`
 
 ### Notes
 
@@ -52,7 +53,8 @@ Optional later refactor if you want monorepo style naming:
   - absolute upload URLs for frontend usage
   - env-based model/upload paths
 - `backend/requirements-render.txt` is optimized for Render and pins CPU PyTorch wheels.
-- If you keep uploaded images on Render disk, add a persistent disk and mount `/var/data`.
+- `backend/runtime.txt` pins Python 3.11.9 for Render compatibility.
+- If you need persistent image storage, add a Render disk mounted at `/var/data` and change `UPLOADS_DIR=/var/data/uploads`.
 
 ## 3) Frontend on Vercel
 
